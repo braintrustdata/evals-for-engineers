@@ -1,0 +1,11 @@
+[project]
+name = "evals-101-workshop"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "autoevals>=0.1.0",
+    "braintrust>=0.5.6",
+    "openai>=2.21.0",
+]
