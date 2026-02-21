@@ -25,7 +25,7 @@ The repo follows a **"cooking show"** format with two parallel sets of files:
 - Uses OpenAI (`gpt-4o-mini`) for the agent LLM
 - Uses `braintrust`, `autoevals`, and `openai` as core dependencies
 - Braintrust project name: `Evals-101-Workshop`
-- Evals are run via: `bt eval <path-to-eval-file>`
+- Evals are run via: `braintrust eval <path-to-eval-file>`
 
 ## When making changes
 

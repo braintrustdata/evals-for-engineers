@@ -8,25 +8,18 @@ We'll build a customer support agent, trace it, discover its failure modes, writ
 
 - Python 3.10+
 - [uv](https://docs.astral.sh/uv/) (Python package manager)
-- [bt](https://github.com/braintrustdata/bt) (Braintrust CLI)
 - An [OpenAI API key](https://platform.openai.com/api-keys)
 - A [Braintrust API key](https://www.braintrust.dev/app/settings?subroute=api-keys)
 
 ## Setup
 
 ```bash
-# Install bt CLI (if you haven't already)
-curl -fsSL https://github.com/braintrustdata/bt/releases/latest/download/bt-installer.sh | sh
-
 # Install dependencies
 uv sync
 
 # Set your API keys
 export OPENAI_API_KEY="sk-..."
 export BRAINTRUST_API_KEY="br-..."
-
-# Log in to Braintrust
-bt login
 ```
 
 ## Workshop Structure
@@ -100,14 +93,6 @@ Look at the traces in the Braintrust UI. Expand each trace to see the span tree.
 | 4 | **FAQ mismatch** | Keyword matching returns irrelevant FAQ entry |
 
 Every failure you find becomes a test case. That's the workflow: **trace → discover → test → fix → repeat**.
-
-You can also use `bt` to browse traces interactively in your terminal:
-
-```bash
-bt -p "Evals-101-Workshop" traces
-```
-
-This opens an interactive trace viewer — use arrow keys to navigate, Enter to expand a trace, and `/` to search/filter. It's a fast way to spot patterns without leaving your terminal.
 
 ---
 
@@ -225,8 +210,11 @@ Eval(
 
 ### 5b. Run it
 
+Make sure your API key is set — the `braintrust eval` CLI reads it from the environment:
+
 ```bash
-bt eval start/eval_agent.py
+export BRAINTRUST_API_KEY="br-..."
+braintrust eval start/eval_agent.py
 ```
 
 ### 5c. Explore results
@@ -236,18 +224,12 @@ Open the experiment in the Braintrust UI:
 - Click into individual test cases to see which scorers flagged them
 - Compare scores across failure categories
 
-You can also browse experiment traces in your terminal:
-
-```bash
-bt -p "Evals-101-Workshop" traces
-```
-
 ### 5d. Iterate (bonus)
 
 Try changing `gpt-4o-mini` to `gpt-4o` in `agent.py`, re-run the eval, and compare experiments side-by-side in the UI:
 
 ```bash
-bt eval start/eval_agent.py
+braintrust eval start/eval_agent.py
 ```
 
 **This is how you hill-climb.** Change one thing, run the eval, see the diff.
@@ -260,6 +242,6 @@ bt eval start/eval_agent.py
 2. **Start with heuristic scorers.** They're fast, free, and deterministic.
 3. **Add LLM-as-a-judge for nuance.** `Factuality` and `ClosedQA` cover a lot out of the box.
 4. **Build custom LLM judges for domain-specific policies.**
-5. **Run evals on every change.** One command: `bt eval eval_agent.py`
+5. **Run evals on every change.** One command: `braintrust eval eval_agent.py`
 
 The best eval is the one you actually run. Start simple, iterate fast.
