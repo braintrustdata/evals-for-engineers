@@ -1,5 +1,6 @@
 # TODO 1: Import what you need
-# Hint: from autoevals import Factuality, ClosedQA, LLMClassifier, Score
+# Hint: from autoevals import LLMClassifier, Score
+# Hint: from autoevals.ragas import Faithfulness
 # Hint: from braintrust import Eval, init_dataset
 # Hint: from agent import support_agent
 
@@ -16,86 +17,72 @@ from agent import support_agent
 
 
 # ============================================================
-# SCORER 1: Keyword match (code-based)
+# SCORER 1: Brand guidelines (custom LLM-as-a-judge)
 # ============================================================
-# TODO 3: Implement a keyword_match scorer
-# - Extract words >= 4 chars from expected
-# - Count how many appear in the output
-# - Return Score(name="keyword_match", score=matches/total)
+# TODO 3: Build an LLMClassifier that checks brand voice compliance
+# - Acme Corp is a project management SaaS company
+# - Brand voice: concise, friendly, professional, empathetic, honest, solution-oriented
+# - Only use {{input}} and {{output}} in the template (not {{expected}})
+# - This is about HOW the agent communicates, not factual accuracy
 #
-# def keyword_match(input, output, expected, **kwargs):
-#     ...
-
-
-# ============================================================
-# SCORER 2: Tool usage checker (trace-based)
-# ============================================================
-# TODO 4: Implement a correct_tool_used scorer that inspects the trace
-# - This scorer uses the `trace` parameter to access actual execution spans
-# - Must be async! Use: async def correct_tool_used(input, output, expected, metadata=None, trace=None, **kwargs):
-# - Call: all_spans = await trace.get_spans()
-# - Each span has a "name" field — check if the expected tool appears in the span names
-# - Return None if no expected_tool in metadata (skip this test case)
-#
-# Hint: tool_names_called = [s.get("name") for s in all_spans
-#            if s.get("name") in ("lookup_order", "process_refund", "search_faq")]
-
-
-# ============================================================
-# SCORER 3: No-hallucination checker (trace-based)
-# ============================================================
-# TODO 5: Implement a no_hallucination_on_missing_order scorer
-# - Only applies when metadata["category"] == "order_not_found"
-# - Return None for all other categories (skip)
-# - Must be async! Use the `trace` parameter to verify the tool returned "not found"
-# - Also check if the final output contains hallucination signals like
-#   "delivered", "shipped", "processing", "pro plan", etc.
-# - Return score=0 if hallucinated, score=1 if clean
-#
-# Hint: inspect span output with:
-#   all_spans = await trace.get_spans()
-#   for span in all_spans:
-#       if span.get("name") == "lookup_order":
-#           span_output = str(span.get("output", ""))
-
-
-# ============================================================
-# SCORER 4: Factuality (LLM-as-a-judge)
-# ============================================================
-# TODO 6: Import and use autoevals.Factuality
-# It works out of the box — just pass it to the scores list
-
-
-# ============================================================
-# SCORER 5: Policy compliance (custom LLM-as-a-judge)
-# ============================================================
-# TODO 7: Build a custom LLMClassifier
 # Hint:
-# policy_compliance = LLMClassifier(
-#     name="PolicyCompliance",
-#     prompt_template="""...""",   # Use {{input}}, {{output}}, {{expected}}
+# brand_guidelines = LLMClassifier(
+#     name="BrandGuidelines",
+#     prompt_template="""...""",
 #     choice_scores={"Yes": 1, "No": 0},
 #     use_cot=True,
 # )
 
 
 # ============================================================
-# SCORER 6: Answer quality (LLM-as-a-judge)
+# SCORER 2: Faithfulness (RAGAS, trace-based context extraction)
 # ============================================================
-# TODO 8: Use autoevals.ClosedQA with a custom criteria string
-# Hint: answer_quality = ClosedQA(criteria="...")
+# TODO 4: Build an async scorer that checks if the agent's output
+# is grounded in what the tools actually returned
+# - Create a module-level instance: _faithfulness_scorer = Faithfulness()
+# - Must be async! Use trace.get_spans(span_type=["tool"]) to get tool spans
+# - Join all tool outputs into a single context string
+# - Call: await _faithfulness_scorer.eval_async(output=output, expected=output, input=input, context=context)
+# - If no trace or no tool outputs, return Score(name="Faithfulness", score=0, metadata={...})
+#
+# Hint:
+# _faithfulness_scorer = Faithfulness()
+#
+# async def faithfulness(input, output, expected, trace=None, **kwargs):
+#     tool_spans = await trace.get_spans(span_type=["tool"])
+#     tool_outputs = [f"{s['name']}: {s['output']}" for s in tool_spans if s.get("output")]
+#     context = "\n".join(tool_outputs)
+#     return await _faithfulness_scorer.eval_async(output=output, expected=output, input=input, context=context)
+
+
+# ============================================================
+# SCORER 3: Expected tool call path (trace-based, sequence check)
+# ============================================================
+# TODO 5: Build an async scorer that checks the ORDER of tool calls
+# - Read metadata["expected_tool_path"] — a list of tool names in order
+# - Use trace.get_spans(span_type=["tool"]) to get tool spans in order
+# - Compare the actual path (list) to the expected path (list) with ==
+# - Return None if metadata doesn't have expected_tool_path (skip)
+#
+# Hint:
+# async def expected_tool_path(input, output, expected, metadata=None, trace=None, **kwargs):
+#     target_path = metadata["expected_tool_path"]
+#     tool_spans = await trace.get_spans(span_type=["tool"])
+#     actual_path = [s.get("name") for s in tool_spans]
+#     match = actual_path == target_path
+#     return Score(name="expected_tool_path", score=1 if match else 0, metadata={...})
 
 
 # ============================================================
 # RUN THE EVAL
 # ============================================================
-# TODO 9: Wire it all together
+# TODO 6: Wire it all together
 # Hint: Use init_dataset to load the dataset from Braintrust, and pass your task function directly
 # Eval(
 #     "Evals-101-Workshop",
 #     data=init_dataset(project="Evals-101-Workshop", name="support-agent-dataset"),
 #     task=task,
 #     scores=[
-#         # your scorers here
+#         # your 3 scorers here
 #     ],
 # )
