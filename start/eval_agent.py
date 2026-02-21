@@ -1,41 +1,18 @@
 # TODO 1: Import what you need
 # Hint: from autoevals import Factuality, ClosedQA, LLMClassifier, Score
-# Hint: from braintrust import Eval
+# Hint: from braintrust import Eval, init_dataset
 # Hint: from agent import support_agent
 
 from agent import support_agent
 
-# ============================================================
-# DATASET: Start with a few test cases, add more as you go
-# ============================================================
-DATASET = [
-    # Happy path: order lookup
-    {
-        "input": "What's the status of order ORD-1001?",
-        "expected": "Order ORD-1001 has been delivered. It contains Pro Plan (Annual) and the total was $299.99.",
-        "metadata": {"category": "order_lookup", "expected_tool": "lookup_order"},
-    },
-    # Happy path: FAQ
-    {
-        "input": "How do I reset my password?",
-        "expected": "Go to Settings > Security > Reset Password. You'll receive an email with a reset link.",
-        "metadata": {"category": "faq", "expected_tool": "search_faq"},
-    },
-    # Failure mode: nonexistent order
-    {
-        "input": "What's the status of order ORD-9999?",
-        "expected": "Order ORD-9999 was not found. Please double-check your order ID or contact support.",
-        "metadata": {"category": "order_not_found", "expected_tool": "lookup_order"},
-    },
 
-    # TODO 2: Add more test cases! Think about:
-    # - Another order lookup (ORD-1004)
-    # - A refund for an eligible order (ORD-1001, status: delivered)
-    # - A refund for an ineligible order (ORD-1002, status: shipped)
-    # - A refund for another ineligible order (ORD-1003, status: processing)
-    # - More FAQ questions (payment methods, free trial, cancel subscription)
-    # - A question with no FAQ match (e.g., Slack integration)
-]
+# ============================================================
+# TASK: Wrap the agent for eval
+# ============================================================
+# TODO 2: Define a task function that takes (input, hooks) and calls your agent
+# Hint:
+# def task(input, hooks):
+#     return support_agent(input)
 
 
 # ============================================================
@@ -113,10 +90,11 @@ DATASET = [
 # RUN THE EVAL
 # ============================================================
 # TODO 9: Wire it all together
+# Hint: Use init_dataset to load the dataset from Braintrust, and pass your task function directly
 # Eval(
 #     "Evals-101-Workshop",
-#     data=lambda: DATASET,
-#     task=lambda input: support_agent(input),
+#     data=init_dataset(project="Evals-101-Workshop", name="support-agent-dataset"),
+#     task=task,
 #     scores=[
 #         # your scorers here
 #     ],
