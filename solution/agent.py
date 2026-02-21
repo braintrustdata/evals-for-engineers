@@ -11,7 +11,12 @@ from data import FAQS, ORDERS
 
 # --- Initialize tracing ---
 logger = init_logger(project="Evals-101-Workshop")
-client = wrap_openai(OpenAI())
+client = wrap_openai(
+    OpenAI(
+        base_url="https://api.braintrust.dev/v1/proxy",
+        api_key=os.environ["BRAINTRUST_API_KEY"],
+    )
+)
 
 
 # --- Tool implementations ---

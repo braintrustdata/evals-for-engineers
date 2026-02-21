@@ -16,8 +16,11 @@ from data import FAQS, ORDERS
 # Hint: logger = init_logger(project="...")
 
 # TODO 3: Wrap the OpenAI client for automatic tracing
-# Hint: client = wrap_openai(OpenAI())
-client = OpenAI()
+# Hint: client = wrap_openai(OpenAI(base_url="https://api.braintrust.dev/v1/proxy", api_key=os.environ["BRAINTRUST_API_KEY"]))
+client = OpenAI(
+    base_url="https://api.braintrust.dev/v1/proxy",
+    api_key=os.environ["BRAINTRUST_API_KEY"],
+)
 
 
 # --- Tool implementations ---
