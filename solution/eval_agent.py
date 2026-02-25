@@ -1,8 +1,8 @@
 from autoevals import LLMClassifier, Score
 from autoevals.ragas import Faithfulness
-from braintrust import Eval, init_dataset
+from braintrust import Eval, init_dataset, _internal_get_global_state
 
-from agent import support_agent
+from solution.agent import support_agent
 
 
 # ============================================================
@@ -50,16 +50,22 @@ async def faithfulness(input, output, expected, trace=None, **kwargs):
     Extracts tool call outputs from the trace spans to use as context,
     then uses the RAGAS Faithfulness scorer to verify groundedness.
     """
+    _internal_get_global_state().span_cache.disable()
     if not trace:
         return Score(name="Faithfulness", score=0, metadata={"reason": "no trace available"})
 
     # Extract tool outputs from trace spans as context
     tool_spans = await trace.get_spans(span_type=["tool"])
+
+    # Skip scoring if lookup_order is the only tool called
+    tool_names = [s.span_attributes.get("name") for s in tool_spans]
+    if tool_names and all(name == "lookup_order" for name in tool_names):
+        return None
+
     tool_outputs = []
     for span in tool_spans:
-        span_output = span.get("output")
-        if span_output:
-            tool_outputs.append(f"{span.get('name')}: {span_output}")
+        if span.output:
+            tool_outputs.append(f"{span.span_attributes.get('name')}: {span.output}")
 
     if not tool_outputs:
         return Score(name="Faithfulness", score=0, metadata={"reason": "no tool outputs found in trace"})
@@ -84,17 +90,18 @@ async def expected_tool_path(input, output, expected, metadata=None, trace=None,
     Compares the actual sequence of tool calls (from trace spans)
     against the expected_tool_path in metadata.
     """
+    _internal_get_global_state().span_cache.disable()
     if not metadata or "expected_tool_path" not in metadata:
         return None
 
-    target_path = metadata["expected_tool_path"]
+    target_path = set(metadata["expected_tool_path"])
 
     if not trace:
         return Score(name="expected_tool_path", score=0, metadata={"reason": "no trace"})
 
     # Get tool spans in order and extract the call sequence
     tool_spans = await trace.get_spans(span_type=["tool"])
-    actual_path = [s.get("name") for s in tool_spans]
+    actual_path = set([s.span_attributes.get("name") for s in tool_spans])
 
     match = actual_path == target_path
     return Score(

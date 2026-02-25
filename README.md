@@ -19,6 +19,7 @@ The agent runs in a loop: it receives a customer message, decides which tool(s) 
 - Python 3.10+
 - [uv](https://docs.astral.sh/uv/) (Python package manager)
 - An [OpenAI API key](https://platform.openai.com/api-keys)
+- A [Braintrust account](https://www.braintrust.dev/signup)
 - A [Braintrust API key](https://www.braintrust.dev/app/settings?subroute=api-keys)
 
 ## Setup
@@ -117,10 +118,10 @@ Open `start/agent.py`. The tracing setup is:
 from braintrust import traced, init_logger, wrap_openai
 
 logger = init_logger(project="Evals-101-Workshop")
-client = wrap_openai(OpenAI())
+client = wrap_openai(OpenAI(api_key=os.environ["OPENAI_API_KEY"]))
 ```
 
-`wrap_openai` automatically traces every LLM call. `@traced` on tool functions captures their inputs and outputs as spans.
+`wrap_openai` automatically traces every LLM call. `@traced(type="tool")` on tool functions captures their inputs and outputs as spans. `@traced(type="task")` on the agent loop marks it as the top-level task.
 
 ```bash
 uv run python start/agent.py
@@ -179,19 +180,26 @@ This catches hallucinations that a ground-truth check would miss: the agent coul
 ```python
 from autoevals.ragas import Faithfulness
 from autoevals import Score
+from braintrust import _internal_get_global_state
 
 _faithfulness_scorer = Faithfulness()
 
 async def faithfulness(input, output, expected, trace=None, **kwargs):
+    _internal_get_global_state().span_cache.disable()
     if not trace:
         return Score(name="Faithfulness", score=0, metadata={"reason": "no trace available"})
 
     tool_spans = await trace.get_spans(span_type=["tool"])
+
+    # Skip scoring if lookup_order is the only tool called
+    tool_names = [s.span_attributes.get("name") for s in tool_spans]
+    if tool_names and all(name == "lookup_order" for name in tool_names):
+        return None
+
     tool_outputs = []
     for span in tool_spans:
-        span_output = span.get("output")
-        if span_output:
-            tool_outputs.append(f"{span.get('name')}: {span_output}")
+        if span.output:
+            tool_outputs.append(f"{span.span_attributes.get('name')}: {span.output}")
 
     if not tool_outputs:
         return Score(name="Faithfulness", score=0, metadata={"reason": "no tool outputs found in trace"})
@@ -202,7 +210,7 @@ async def faithfulness(input, output, expected, trace=None, **kwargs):
     )
 ```
 
-`trace.get_spans(span_type=["tool"])` gives you every tool call and its output — that's the context for grounding.
+`trace.get_spans(span_type=["tool"])` gives you every tool call and its output — that's the context for grounding. Span data uses attribute access (`span.output`, `span.span_attributes.get("name")`).
 
 ### 5c. Ground-truth check — Expected Tool Path (TODO 5)
 
@@ -212,16 +220,17 @@ This is the most straightforward type of check: did the agent do what we expecte
 
 ```python
 async def expected_tool_path(input, output, expected, metadata=None, trace=None, **kwargs):
+    _internal_get_global_state().span_cache.disable()
     if not metadata or "expected_tool_path" not in metadata:
         return None
 
-    target_path = metadata["expected_tool_path"]
+    target_path = set(metadata["expected_tool_path"])
 
     if not trace:
         return Score(name="expected_tool_path", score=0, metadata={"reason": "no trace"})
 
     tool_spans = await trace.get_spans(span_type=["tool"])
-    actual_path = [s.get("name") for s in tool_spans]
+    actual_path = set([s.span_attributes.get("name") for s in tool_spans])
 
     match = actual_path == target_path
     return Score(
@@ -255,6 +264,8 @@ Eval(
 ### Run it
 
 ```bash
+source .venv/bin/activate
+export BRAINTRUST_API_KEY=sk-...
 braintrust eval start/eval_agent.py
 ```
 

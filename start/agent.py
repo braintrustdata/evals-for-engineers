@@ -8,6 +8,10 @@ from openai import OpenAI
 
 from data import FAQS, ORDERS
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # TODO 1: Import tracing utilities from braintrust
 # Hint: you need init_logger, traced, and wrap_openai
 # from braintrust import init_logger, traced, wrap_openai
@@ -24,7 +28,7 @@ client = OpenAI(
 
 # --- Tool implementations ---
 
-# TODO 4: Add @traced decorator to each tool function
+# TODO 4: Add @traced(type="tool") decorator to each tool function
 
 def lookup_order(order_id: str) -> str:
     order = ORDERS.get(order_id)
@@ -107,7 +111,7 @@ If a tool returns an error, relay that information honestly to the customer — 
 
 # --- Agent loop ---
 
-# TODO 5: Add @traced decorator
+# TODO 5: Add @traced(type="task") decorator
 def support_agent(user_message: str) -> str:
     """Run the support agent with an agentic tool-calling loop."""
     messages = [

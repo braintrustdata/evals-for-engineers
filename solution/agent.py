@@ -9,19 +9,22 @@ from openai import OpenAI
 
 from data import FAQS, ORDERS
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # --- Initialize tracing ---
 logger = init_logger(project="Evals-101-Workshop")
 client = wrap_openai(
     OpenAI(
-        base_url="https://api.braintrust.dev/v1/proxy",
-        api_key=os.environ["BRAINTRUST_API_KEY"],
+        api_key=os.environ["OPENAI_API_KEY"]
     )
 )
 
 
 # --- Tool implementations ---
 
-@traced
+@traced(type="tool")
 def lookup_order(order_id: str) -> str:
     order = ORDERS.get(order_id)
     if not order:
@@ -29,7 +32,7 @@ def lookup_order(order_id: str) -> str:
     return json.dumps({"order_id": order_id, **order})
 
 
-@traced
+@traced(type="tool")
 def process_refund(order_id: str, reason: str) -> str:
     order = ORDERS.get(order_id)
     if not order:
@@ -39,7 +42,7 @@ def process_refund(order_id: str, reason: str) -> str:
     return f"Refund of ${order['total']:.2f} for order {order_id} has been processed. Reason: {reason}"
 
 
-@traced
+@traced(type="tool")
 def search_faq(query: str) -> str:
     query_lower = query.lower()
     for faq in FAQS:
@@ -104,7 +107,7 @@ If a tool returns an error, relay that information honestly to the customer — 
 
 
 # --- Agent loop ---
-@traced
+@traced(type="task")
 def support_agent(user_message: str) -> str:
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},

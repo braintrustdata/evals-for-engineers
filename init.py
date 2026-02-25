@@ -8,6 +8,11 @@ Usage:
 """
 
 import braintrust
+import os
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 PROJECT_NAME = "Evals-101-Workshop"
 DATASET_NAME = "support-agent-dataset"
@@ -84,7 +89,7 @@ DATASET = [
 
 
 def main():
-    dataset = braintrust.init_dataset(project=PROJECT_NAME, name=DATASET_NAME)
+    dataset = braintrust.init_dataset(project=PROJECT_NAME, name=DATASET_NAME, api_key=os.environ["BRAINTRUST_API_KEY"])
 
     for row in DATASET:
         dataset.insert(
