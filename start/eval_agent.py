@@ -2,7 +2,7 @@ from autoevals import LLMClassifier, Score
 from autoevals.ragas import Faithfulness
 from braintrust import Eval, init_dataset, _internal_get_global_state
 
-from agent import support_agent
+from start.agent import support_agent
 
 
 # ============================================================
@@ -54,10 +54,10 @@ async def faithfulness(input, output, expected, trace=None, **kwargs):
     if not trace:
         return Score(name="Faithfulness", score=0, metadata={"reason": "no trace available"})
 
-    # Extract tool outputs from trace spans as context
+    ## Extract tool outputs from trace spans as context
     # tool_spans = await trace.get_spans(span_type=["tool"])
 
-    # Skip scoring if lookup_order is the only tool called
+    ## Skip scoring if lookup_order is the only tool called
     # tool_names = [s.span_attributes.get("name") for s in tool_spans]
     # if tool_names and all(name == "lookup_order" for name in tool_names):
     #     return None
@@ -99,7 +99,7 @@ async def expected_tool_path(input, output, expected, metadata=None, trace=None,
     if not trace:
         return Score(name="expected_tool_path", score=0, metadata={"reason": "no trace"})
 
-    # Get tool spans in order and extract the call sequence
+    ## Get tool spans in order and extract the call sequence
     # tool_spans = await trace.get_spans(span_type=["tool"])
     # actual_path = set([s.span_attributes.get("name") for s in tool_spans])
 
