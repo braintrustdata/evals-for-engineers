@@ -9,17 +9,16 @@ from openai import OpenAI
 from data import FAQS, ORDERS
 
 # TODO 1: Import tracing utilities from braintrust
-# Hint: you need traced, init_logger, wrap_openai, and current_span
-# from braintrust import ...
+# Hint: you need init_logger, traced, and wrap_openai
+# from braintrust import init_logger, traced, wrap_openai
 
 # TODO 2: Initialize the Braintrust logger
-# Hint: logger = init_logger(project="...")
+# logger = init_logger(project="Evals-101-Workshop")
 
 # TODO 3: Wrap the OpenAI client for automatic tracing
-# Hint: client = wrap_openai(OpenAI(base_url="https://api.braintrust.dev/v1/proxy", api_key=os.environ["BRAINTRUST_API_KEY"]))
+# Hint: client = wrap_openai(OpenAI(...))
 client = OpenAI(
-    base_url="https://api.braintrust.dev/v1/proxy",
-    api_key=os.environ["BRAINTRUST_API_KEY"],
+    api_key=os.environ["OPENAI_API_KEY"],
 )
 
 
@@ -28,31 +27,27 @@ client = OpenAI(
 # TODO 4: Add @traced decorator to each tool function
 
 def lookup_order(order_id: str) -> str:
-    """Look up an order by ID. Returns JSON with order details or 'not found'."""
-    # TODO 5: Implement this function
-    # - Look up order_id in the ORDERS dict
-    # - If not found, return f"Order {order_id} not found."
-    # - If found, return json.dumps({"order_id": order_id, **order})
-    pass
+    order = ORDERS.get(order_id)
+    if not order:
+        return f"Order {order_id} not found."
+    return json.dumps({"order_id": order_id, **order})
 
 
 def process_refund(order_id: str, reason: str) -> str:
-    """Process a refund. Only delivered orders are eligible."""
-    # TODO 6: Implement this function
-    # - Look up the order
-    # - If not found, return an error
-    # - If status != "delivered", return an error explaining it's not eligible
-    # - Otherwise, return a success message with the refund amount
-    pass
+    order = ORDERS.get(order_id)
+    if not order:
+        return f"Error: Order {order_id} not found."
+    if order["status"] != "delivered":
+        return f"Error: Order {order_id} is '{order['status']}' and is not eligible for a refund. Only delivered orders can be refunded."
+    return f"Refund of ${order['total']:.2f} for order {order_id} has been processed. Reason: {reason}"
 
 
 def search_faq(query: str) -> str:
-    """Search FAQs using keyword matching."""
-    # TODO 7: Implement this function
-    # - Split the query into words, filter to words > 3 chars
-    # - Loop through FAQS and check if any query word appears in the FAQ question
-    # - Return the first match as JSON, or a "no match" response
-    pass
+    query_lower = query.lower()
+    for faq in FAQS:
+        if any(word in faq["question"].lower() for word in query_lower.split() if len(word) > 3):
+            return json.dumps(faq)
+    return json.dumps({"question": "No match", "answer": "I couldn't find a relevant FAQ entry. Please contact support@acme.com."})
 
 
 # --- Tool dispatch ---
@@ -112,7 +107,7 @@ If a tool returns an error, relay that information honestly to the customer — 
 
 # --- Agent loop ---
 
-# TODO 8: Add @traced decorator
+# TODO 5: Add @traced decorator
 def support_agent(user_message: str) -> str:
     """Run the support agent with an agentic tool-calling loop."""
     messages = [
@@ -120,17 +115,32 @@ def support_agent(user_message: str) -> str:
         {"role": "user", "content": user_message},
     ]
 
-    # TODO 9: Implement the agentic loop
-    # - Call client.chat.completions.create() with model, messages, and tools
-    # - Check if finish_reason == "stop" → return the message content
-    # - Otherwise, process each tool_call:
-    #     - Parse the function name and arguments
-    #     - Call the tool via TOOL_MAP
-    #     - Append the tool result to messages
-    # - Loop up to 3 times to allow multi-step tool use
-    # - After the loop, make one final call to get the answer
+    for _ in range(3):
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            tools=TOOLS,
+        )
+        choice = response.choices[0]
 
-    pass
+        if choice.finish_reason == "stop":
+            return choice.message.content
+
+        # Process tool calls
+        messages.append(choice.message)
+        for tool_call in choice.message.tool_calls:
+            fn_name = tool_call.function.name
+            fn_args = json.loads(tool_call.function.arguments)
+            result = TOOL_MAP[fn_name](fn_args)
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": result,
+            })
+
+    # Exhausted tool-call rounds — get a final answer
+    final = client.chat.completions.create(model="gpt-4o-mini", messages=messages)
+    return final.choices[0].message.content
 
 
 # --- Manual testing ---
