@@ -28,9 +28,15 @@ The agent runs in a loop: it receives a customer message, decides which tool(s) 
 # Install dependencies
 uv sync
 
+# Activate the virtual environment
+source .venv/bin/activate
+
 # Set your API keys
 export OPENAI_API_KEY="sk-..."
 export BRAINTRUST_API_KEY="br-..."
+
+# Initialize the dataset in your Braintrust account
+uv run python init.py
 ```
 
 ## Repo Structure
