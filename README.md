@@ -4,6 +4,8 @@ A hands-on workshop for building AI evaluations with [Braintrust](https://braint
 
 We'll build a customer support agent, trace it, discover its failure modes, write evals, and run experiments — all in ~45 minutes.
 
+📑 [Workshop slides](slides.pdf)
+
 ## The Agent
 
 The workshop builds a customer support agent for **Acme Corp**, a fictional project management SaaS company. The agent uses OpenAI tool-calling (`gpt-4o-mini`) and has three tools:
@@ -296,3 +298,9 @@ Try changing `gpt-4o-mini` to `gpt-4o` in `agent.py`, re-run the eval, and compa
 4. **Context-based checks** (faithfulness) use the trace to verify the agent didn't hallucinate beyond what its tools returned.
 5. **Ground-truth checks** (expected tool path) compare against known-correct answers — the most direct signal when you have it.
 6. **Run evals on every change.** One command: `braintrust eval eval_agent.py`
+
+---
+
+## Next Steps
+
+Want to go deeper? Check out our [Evals Course](https://www.braintrust.dev/foundations) covering tracing, scoring, datasets, and how to go to production with evals.
